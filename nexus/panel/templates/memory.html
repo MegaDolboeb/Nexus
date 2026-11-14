@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ t('memory.title') }} — Nexus{% endblock %}
+{% block content %}
+      <header class="top">
+        <div><h1 style="margin:0;font-size:25px;">{{ t('memory.title') }}</h1>
+          <p style="margin:5px 0 0;color:var(--text-dim);font-size:13.5px;">{{ t('memory.subtitle') }}</p></div>
+      </header>
+      <form method="get" action="/memory" style="display:flex;gap:8px;">
+        <input type="hidden" name="token" value="{{ token }}">
+        <input class="text" type="text" name="q" value="{{ query }}" placeholder="{{ t('memory.search_placeholder') }}">
+        <button class="btn" type="submit">{{ t('memory.find') }}</button>
+      </form>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        {% for m in items %}
+        <article class="card" style="padding:16px 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+            <h2 style="margin:0;font-size:15.5px;font-weight:600;max-width:680px;">
+              <a href="/memory/{{ m.id }}?token={{ token }}" style="color:inherit;">{{ m.title }}</a>
+            </h2>
+            <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap;">
+              <span class="pulse {{ m.status_color }}"></span>
+              <span style="font-size:12.5px;color:var(--text-dim);">{{ m.status }}</span>
+              {% if m.low_reliability %}<span class="badge">{{ t('badge.low_reliability') }}</span>{% endif %}
+            </div>
+          </div>
+          <p style="margin:8px 0 0;color:var(--text-dim);font-size:13.5px;line-height:1.5;max-width:800px;">{{ m.gist[:240] }}{% if m.gist|length > 240 %}…{% endif %}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+            <span style="font-size:12px;color:var(--text-dim);">
+              {{ m.topic }} · {{ m.sources_count }} {{ t('memory.sources_count') }}{% if m.related_count %} · {{ m.related_count }} {{ t('memory.related_count') }}{% endif %} · {{ t('memory.updated', time=m.updated) }}
+            </span>
+            <a href="/memory/{{ m.id }}?token={{ token }}" style="font-size:12.5px;color:var(--accent);">{{ t('memory.details') }}</a>
+          </div>
+        </article>
+        {% else %}
+        <div class="empty">{% if query %}{{ t('memory.empty_query', q=query) }}{% else %}{{ t('memory.empty') }}{% endif %}</div>
+        {% endfor %}
+      </div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "_о_файле": "Пример списка источников. Скопируйте в personal/sources.json и меняйте как хотите. reliability: high | medium | low. kind: rss | arxiv. note — что важно знать об источнике.",
+  "sources": [
+    {"id": "nplus1", "name": "N+1", "kind": "rss", "url": "https://nplus1.ru/rss", "lang": "ru", "reliability": "high", "every_min": 60},
+    {"id": "quanta", "name": "Quanta Magazine", "kind": "rss", "url": "https://api.quantamagazine.org/feed/", "lang": "en", "reliability": "high", "every_min": 360},
+    {"id": "mittr", "name": "MIT Technology Review", "kind": "rss", "url": "https://www.technologyreview.com/feed/", "lang": "en", "reliability": "high", "every_min": 120},
+    {"id": "arxiv_ai", "name": "arXiv: AI", "kind": "arxiv", "categories": ["cs.AI"], "lang": "en", "reliability": "medium", "every_min": 360, "primary": true, "note": "препринт, ещё не проверен рецензентами, но это сама публикация"}
+  ]
+}

@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block title %}{{ t('settings.title') }} — Nexus{% endblock %}
+{% block content %}
+      <header class="top">
+        <div><h1 style="margin:0;font-size:25px;">{{ t('settings.title') }}</h1>
+          <p style="margin:5px 0 0;color:var(--text-dim);font-size:13.5px;">{{ t('settings.subtitle') }}</p></div>
+      </header>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.priority_title') }}</h3>
+        <p style="margin:0 0 14px;color:var(--text-dim);font-size:12.5px;max-width:560px;">{{ t('settings.priority_hint') }}</p>
+        <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+          <div class="avatar" style="width:84px;height:84px;">
+            {% if s.has_priority_photo %}
+            <img id="priority-preview" src="/assets/priority?token={{ token }}" alt="{{ s.priority_name or t('priority.default_title') }}" style="width:100%;height:100%;object-fit:cover;border-radius:20px;">
+            {% else %}
+            <div class="ph" id="priority-preview-ph"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="#2A1B0B" stroke-width="1.6"/><path d="M4 20c1.5-4 4.8-6 8-6s6.5 2 8 6" stroke="#2A1B0B" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+            {% endif %}
+            <img id="priority-preview-img" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:20px;position:absolute;top:0;left:0;">
+          </div>
+          <div>
+            <input type="file" id="photo-input" accept="image/png,image/jpeg,image/webp" onchange="pickPhoto(event)">
+            <span id="photo-result" style="margin-left:8px;font-size:13px;color:var(--text-dim);"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;">
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_name') }}</label>
+            <input class="text" id="priority-name" type="text" value="{{ s.priority_name }}" placeholder="{{ t('settings.priority_name_placeholder') }}"></div>
+          <div></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_processes') }}</label>
+            <input class="text" id="priority-processes" type="text" value="{{ s.priority_processes }}" placeholder="{{ t('settings.priority_processes_placeholder') }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_ports') }}</label>
+            <input class="text" id="priority-ports" type="text" value="{{ s.priority_ports }}" placeholder="{{ t('settings.priority_ports_placeholder') }}"></div>
+          <div style="grid-column:1/-1;"><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_status_file') }}</label>
+            <input class="text" id="priority-status-file" type="text" value="{{ s.priority_status_file }}" placeholder="{{ t('settings.priority_status_file_placeholder') }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_vram_mb') }}</label>
+            <input class="text" id="priority-vram" type="number" min="0" step="1" value="{{ s.priority_vram_mb }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.priority_ram_gb') }}</label>
+            <input class="text" id="priority-ram" type="number" min="0" step="0.5" value="{{ s.priority_ram_gb }}"></div>
+        </div>
+        <button class="btn" onclick="savePriority()">{{ t('settings.save') }}</button>
+        <span id="priority-result" style="margin-left:12px;font-size:13px;color:var(--text-dim);"></span>
+      </section>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.language_title') }}</h3>
+        <p style="margin:0 0 12px;color:var(--text-dim);font-size:12.5px;max-width:520px;">{{ t('settings.language_hint') }}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;" id="lang-chips">
+          {% for l in s.languages %}
+          <button type="button" class="chip{{ ' active' if l.id == s.language else '' }}" data-lang="{{ l.id }}" onclick="pickLang('{{ l.id }}')">{{ l.name }}</button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.research_title') }}</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;" id="mode-chips">
+          {% for m in s.research_modes %}
+          <button type="button" class="chip{{ ' active' if m.id == s.research_mode else '' }}" data-mode="{{ m.id }}" onclick="pickMode('{{ m.id }}')">{{ m.name }}</button>
+          {% endfor %}
+        </div>
+        <label style="font-size:13px;color:var(--text-dim);display:block;margin-bottom:6px;">{{ t('settings.custom_style') }}</label>
+        <input class="text" id="custom-instruction" type="text" value="{{ s.custom_instruction }}"
+          placeholder="{{ t('settings.custom_style_placeholder') }}">
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0;">
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.segment_min') }}</label>
+            <input class="text" id="segment-min" type="number" min="1" step="1" value="{{ s.segment_min }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.rest_min') }}</label>
+            <input class="text" id="rest-min" type="number" min="0.5" step="0.5" value="{{ s.rest_min }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.after_priority_min') }}</label>
+            <input class="text" id="after-priority-min" type="number" min="0" step="0.5" value="{{ s.after_priority_min }}"></div>
+        </div>
+        <button class="btn" onclick="saveSettings()">{{ t('settings.save') }}</button>
+        <span id="settings-result" style="margin-left:12px;font-size:13px;color:var(--text-dim);"></span>
+      </section>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.topics_title') }}</h3>
+        <table class="plain" id="topics-table">
+          <thead><tr><th>{{ t('settings.col_topic') }}</th><th>{{ t('settings.col_enabled') }}</th><th>{{ t('settings.col_priority') }}</th><th>{{ t('settings.col_actions') }}</th></tr></thead>
+          <tbody>
+          {% for tp in edit_topics %}
+          <tr data-topic="{{ tp.id }}">
+            <td><strong>{{ tp.name }}</strong><div style="color:var(--text-dim);font-size:12px;max-width:420px;">{{ tp.about }}</div></td>
+            <td><input type="checkbox" class="t-enabled" {{ 'checked' if tp.enabled else '' }} style="width:18px;height:18px;"></td>
+            <td><select class="text t-priority" style="width:auto;padding:6px 10px;">
+              <option value="1" {{ 'selected' if tp.priority == 1 else '' }}>{{ t('settings.priority_1') }}</option>
+              <option value="2" {{ 'selected' if tp.priority == 2 else '' }}>{{ t('settings.priority_2') }}</option>
+              <option value="3" {{ 'selected' if tp.priority == 3 else '' }}>{{ t('settings.priority_3') }}</option>
+            </select></td>
+            <td><button type="button" class="btn ghost del-topic-btn" data-id="{{ tp.id }}" style="padding:5px 10px;font-size:12px;">{{ t('settings.topics_delete') }}</button></td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <button class="btn" style="margin-top:14px;" onclick="saveTopics()">{{ t('settings.save_topics') }}</button>
+        <span id="topics-result" style="margin-left:12px;font-size:13px;color:var(--text-dim);"></span>
+
+        <div style="margin-top:22px;padding-top:18px;border-top:1px solid var(--border);">
+          <h3 class="label">{{ t('settings.topics_add_title') }}</h3>
+          <p style="margin:0 0 12px;color:var(--text-dim);font-size:12.5px;max-width:560px;">{{ t('settings.topics_add_hint') }}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <input class="text" id="new-topic-name" type="text" placeholder="{{ t('settings.topics_name_placeholder') }}" style="max-width:220px;">
+            <select class="text" id="new-topic-priority" style="max-width:180px;">
+              <option value="1">{{ t('settings.priority_1') }}</option>
+              <option value="2" selected>{{ t('settings.priority_2') }}</option>
+              <option value="3">{{ t('settings.priority_3') }}</option>
+            </select>
+          </div>
+          <input class="text" id="new-topic-about" type="text" placeholder="{{ t('settings.topics_about_placeholder') }}" style="margin-bottom:8px;">
+          <input class="text" id="new-topic-keywords" type="text" placeholder="{{ t('settings.topics_keywords_placeholder') }}" style="margin-bottom:10px;">
+          <div><button class="btn" onclick="addTopic()">{{ t('settings.topics_add_btn') }}</button></div>
+          <div id="add-topic-result" style="margin-top:10px;font-size:13px;color:var(--text-dim);"></div>
+        </div>
+      </section>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.pause_programs_title') }}</h3>
+        <p style="margin:0 0 12px;color:var(--text-dim);font-size:12.5px;max-width:520px;">{{ t('settings.pause_programs_hint') }}</p>
+        <div id="pause-programs-list" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;">
+          <input class="text" id="pause-program-input" type="text" placeholder="{{ t('settings.pause_programs_placeholder') }}" style="max-width:320px;">
+          <button class="btn ghost" type="button" onclick="addPauseProgram()">{{ t('settings.pause_programs_add') }}</button>
+        </div>
+      </section>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('settings.models_title') }}</h3>
+        <p style="margin:0 0 12px;color:var(--text-dim);font-size:12.5px;max-width:560px;">{{ t('settings.models_hint') }}</p>
+        <datalist id="models-datalist"></datalist>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:10px;">
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.model_work') }}</label>
+            <input class="text" id="model-work" list="models-datalist" value="{{ s.work_model }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.model_cpu') }}</label>
+            <input class="text" id="model-cpu" list="models-datalist" value="{{ s.cpu_model }}"></div>
+          <div><label style="font-size:12.5px;color:var(--text-dim);display:block;margin-bottom:5px;">{{ t('settings.model_embed') }}</label>
+            <input class="text" id="model-embed" list="models-datalist" value="{{ s.embed_model }}"></div>
+        </div>
+        <button class="btn ghost" type="button" onclick="refreshModels()">{{ t('settings.models_refresh') }}</button>
+        <button class="btn" type="button" onclick="saveSettings()" style="margin-left:8px;">{{ t('settings.save') }}</button>
+        <span id="models-refresh-result" style="margin-left:10px;font-size:12.5px;color:var(--text-dim);"></span>
+
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+          <h3 class="label">{{ t('settings.models_pull_title') }}</h3>
+          <p style="margin:0 0 10px;color:var(--text-dim);font-size:12.5px;max-width:520px;">{{ t('settings.models_pull_hint') }}</p>
+          <div style="display:flex;gap:8px;">
+            <input class="text" id="pull-model-name" type="text" placeholder="{{ t('settings.models_pull_placeholder') }}" style="max-width:260px;">
+            <button class="btn" type="button" onclick="pullModel()">{{ t('settings.models_pull_btn') }}</button>
+          </div>
+          <div id="pull-model-result" style="margin-top:10px;font-size:13px;color:var(--text-dim);"></div>
+        </div>
+      </section>
+
+      <div class="card" style="padding:4px 0;">
+        <table class="plain">
+          <tbody>
+            <tr><td style="color:var(--text-dim);width:260px;">{{ t('settings.min_free_ram') }}</td><td>{{ s.min_free_ram_gb }} ГБ</td></tr>
+            <tr><td style="color:var(--text-dim);">{{ t('settings.games_list') }}</td><td style="color:var(--text-dim);font-size:12.5px;">{{ s.games | join(', ') }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+{% endblock %}
+{% block scripts %}
+<script>
+function pickPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const out = document.getElementById('photo-result');
+  const reader = new FileReader();
+  reader.onload = async () => {
+    out.textContent = tr('settings.photo_uploading'); out.style.color = 'var(--text-dim)';
+    try {
+      const r = await nexusFetch('/api/settings/photo', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data_url: reader.result }),
+      });
+      const d = await r.json();
+      if (!r.ok) { out.textContent = d.detail || tr('settings.photo_error'); out.style.color = 'var(--bad)'; return; }
+      out.textContent = tr('settings.photo_saved'); out.style.color = 'var(--ok)';
+      const img = document.getElementById('priority-preview-img');
+      img.src = reader.result; img.style.display = 'block';
+      const ph = document.getElementById('priority-preview-ph');
+      if (ph) ph.style.display = 'none';
+      const old = document.getElementById('priority-preview');
+      if (old) old.style.display = 'none';
+    } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+let pausePrograms = {{ s.extra_pause_programs | tojson }};
+function renderPausePrograms() {
+  const box = document.getElementById('pause-programs-list');
+  if (!pausePrograms.length) { box.innerHTML = '<span class="empty" style="padding:0;">' + tr('settings.pause_programs_empty') + '</span>'; return; }
+  box.innerHTML = pausePrograms.map(p => `<span class="chip">${escHtml(p)} <a href="#" class="pp-remove" data-name="${escHtml(p)}" style="color:var(--bad);margin-left:6px;">${tr('settings.pause_programs_remove')}</a></span>`).join('');
+  box.querySelectorAll('.pp-remove').forEach(a => a.addEventListener('click', (e) => { e.preventDefault(); removePauseProgram(a.dataset.name); }));
+}
+async function savePausePrograms() {
+  try { await nexusFetch('/api/settings/pause-programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ programs: pausePrograms }) }); } catch (e) { /* попробуем позже */ }
+}
+function addPauseProgram() {
+  const inp = document.getElementById('pause-program-input');
+  const v = inp.value.trim().toLowerCase();
+  if (!v) return;
+  if (!pausePrograms.includes(v)) pausePrograms.push(v);
+  inp.value = '';
+  renderPausePrograms();
+  savePausePrograms();
+}
+function removePauseProgram(name) {
+  pausePrograms = pausePrograms.filter(p => p !== name);
+  renderPausePrograms();
+  savePausePrograms();
+}
+renderPausePrograms();
+
+let currentMode = "{{ s.research_mode }}";
+function pickMode(id) {
+  currentMode = id;
+  document.querySelectorAll('#mode-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.mode === id));
+}
+let currentLang = "{{ s.language }}";
+function pickLang(id) {
+  currentLang = id;
+  document.querySelectorAll('#lang-chips .chip').forEach(c => c.classList.toggle('active', c.dataset.lang === id));
+}
+async function saveSettings() {
+  const body = {
+    segment_min: parseFloat(document.getElementById('segment-min').value),
+    rest_min: parseFloat(document.getElementById('rest-min').value),
+    after_priority_min: parseFloat(document.getElementById('after-priority-min').value),
+    research_mode: currentMode,
+    custom_instruction: document.getElementById('custom-instruction').value,
+    language: currentLang,
+    work_model: document.getElementById('model-work').value.trim(),
+    cpu_model: document.getElementById('model-cpu').value.trim(),
+    embed_model: document.getElementById('model-embed').value.trim(),
+  };
+  const out = document.getElementById('settings-result');
+  try {
+    const r = await nexusFetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    out.textContent = r.ok ? tr('settings.saved', {note: d.note}) : (d.detail || tr('settings.photo_error'));
+    out.style.color = r.ok ? 'var(--ok)' : 'var(--bad)';
+    if (r.ok && currentLang !== "{{ s.language }}") location.reload();
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+async function savePriority() {
+  const body = {
+    name: document.getElementById('priority-name').value.trim(),
+    processes: document.getElementById('priority-processes').value.trim(),
+    ports: document.getElementById('priority-ports').value.trim(),
+    status_file: document.getElementById('priority-status-file').value.trim(),
+    vram_mb: parseFloat(document.getElementById('priority-vram').value) || 0,
+    ram_gb: parseFloat(document.getElementById('priority-ram').value) || 0,
+  };
+  const out = document.getElementById('priority-result');
+  try {
+    const r = await nexusFetch('/api/settings/priority', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    out.textContent = r.ok ? tr('settings.saved', {note: d.note}) : (d.detail || tr('settings.photo_error'));
+    out.style.color = r.ok ? 'var(--ok)' : 'var(--bad)';
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+async function refreshModels() {
+  const out = document.getElementById('models-refresh-result');
+  out.textContent = '…';
+  try {
+    const r = await nexusFetch('/api/models/list');
+    const d = await r.json();
+    const list = document.getElementById('models-datalist');
+    list.innerHTML = (d.models || []).map(m => `<option value="${escHtml(m)}">`).join('');
+    out.textContent = d.available ? '' : tr('settings.models_unavailable');
+    out.style.color = 'var(--text-dim)';
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+refreshModels();
+let pullPoll = null;
+async function pullModel() {
+  const name = document.getElementById('pull-model-name').value.trim();
+  if (!name) return;
+  const out = document.getElementById('pull-model-result');
+  out.textContent = tr('settings.models_pulling'); out.style.color = 'var(--text-dim)';
+  try {
+    const r = await nexusFetch('/api/models/pull', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: name }) });
+    const d = await r.json();
+    if (!r.ok) { out.textContent = d.detail || tr('settings.models_pull_failed'); out.style.color = 'var(--bad)'; return; }
+    if (pullPoll) clearInterval(pullPoll);
+    pullPoll = setInterval(() => checkPull(d.task_id), 4000);
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+async function checkPull(taskId) {
+  const out = document.getElementById('pull-model-result');
+  try {
+    const r = await nexusFetch('/api/models/pull/' + taskId);
+    if (!r.ok) { clearInterval(pullPoll); pullPoll = null; out.textContent = tr('settings.models_pull_failed'); out.style.color = 'var(--bad)'; return; }
+    const t = await r.json();
+    if (t.state === 'QUEUED' || t.state === 'RUNNING' || t.state === 'INTERRUPTED') return;
+    clearInterval(pullPoll); pullPoll = null;
+    const cp = t.checkpoint || {};
+    if (cp.ok) {
+      out.textContent = tr('settings.models_pull_done'); out.style.color = 'var(--ok)';
+      refreshModels();
+    } else {
+      out.textContent = tr('settings.models_pull_failed') + ': ' + escHtml(cp.error || t.reason || ''); out.style.color = 'var(--bad)';
+    }
+  } catch (e) { /* попробуем на следующем тике */ }
+}
+document.querySelectorAll('.del-topic-btn').forEach(btn => {
+  btn.addEventListener('click', () => twoStepConfirm(btn, tr('settings.topics_delete_confirm'), () => deleteTopic(btn.dataset.id)));
+});
+async function deleteTopic(id) {
+  const out = document.getElementById('topics-result');
+  try {
+    const r = await nexusFetch('/api/topics/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (r.ok) { location.reload(); return; }
+    const d = await r.json();
+    out.textContent = d.detail || tr('settings.topics_add_error'); out.style.color = 'var(--bad)';
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+async function addTopic() {
+  const name = document.getElementById('new-topic-name').value.trim();
+  const about = document.getElementById('new-topic-about').value.trim();
+  const keywords = document.getElementById('new-topic-keywords').value.trim();
+  const priority = parseInt(document.getElementById('new-topic-priority').value, 10);
+  const out = document.getElementById('add-topic-result');
+  if (!name || !keywords) { out.textContent = tr('settings.topics_add_error'); out.style.color = 'var(--bad)'; return; }
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'topic';
+  try {
+    const r = await nexusFetch('/api/topics/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name, about, keywords, priority })
+    });
+    const d = await r.json();
+    if (!r.ok) { out.textContent = d.detail || tr('settings.topics_add_error'); out.style.color = 'var(--bad)'; return; }
+    location.reload();
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+async function saveTopics() {
+  const updates = {};
+  document.querySelectorAll('#topics-table tbody tr').forEach(row => {
+    updates[row.dataset.topic] = {
+      enabled: row.querySelector('.t-enabled').checked,
+      priority: parseInt(row.querySelector('.t-priority').value, 10),
+    };
+  });
+  const out = document.getElementById('topics-result');
+  try {
+    const r = await nexusFetch('/api/topics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ updates }) });
+    out.textContent = r.ok ? tr('settings.photo_saved') : tr('settings.save_error');
+    out.style.color = r.ok ? 'var(--ok)' : 'var(--bad)';
+  } catch (e) { out.textContent = tr('settings.photo_network_error'); out.style.color = 'var(--bad)'; }
+}
+</script>
+{% endblock %}

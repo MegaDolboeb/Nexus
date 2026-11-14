@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ t('conductor.title') }} — Nexus{% endblock %}
+{% block content %}
+      <header class="top">
+        <div><h1 style="margin:0;font-size:25px;">{{ t('conductor.title') }}</h1>
+          <p style="margin:5px 0 0;color:var(--text-dim);font-size:13.5px;">{{ t('conductor.subtitle') }}</p></div>
+      </header>
+      <div class="card" style="padding:22px 24px;">
+        <p style="margin:0 0 14px;color:var(--text-dim);font-size:13.5px;line-height:1.6;">
+          {{ t('conductor.intro') }}
+          <strong>{{ t('conductor.no_notify') }}</strong>{{ t('conductor.no_notify_rest') }}
+        </p>
+        <textarea id="text" placeholder="{{ t('conductor.placeholder') }}"
+          style="width:100%;min-height:90px;background:var(--bg-elev-2);border:1px solid var(--border);border-radius:10px;
+          padding:12px 14px;color:var(--text);font-size:14px;resize:vertical;"></textarea>
+        <div style="margin-top:12px;"><button class="btn" id="submit-btn" onclick="submitErrand()">{{ t('conductor.submit') }}</button></div>
+        <div id="result" style="margin-top:16px;"></div>
+      </div>
+{% endblock %}
+{% block scripts %}
+<script>
+let poll = null;
+function setResult(html) { document.getElementById('result').innerHTML = html; }
+
+async function submitErrand() {
+  const text = document.getElementById('text').value.trim();
+  if (!text) return;
+  document.getElementById('submit-btn').disabled = true;
+  setResult('<p style="color:var(--text-dim);font-size:13.5px;">' + tr('conductor.checking') + '</p>');
+  try {
+    const r = await nexusFetch('/api/conductor', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text })
+    });
+    const d = await r.json();
+    if (!r.ok) { setResult('<p style="color:var(--bad);font-size:13.5px;">' + (d.detail || tr('conductor.error')) + '</p>'); document.getElementById('submit-btn').disabled = false; return; }
+    if (d.decision === 'deny') {
+      setResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('conductor.denied', {reason: d.reason}) + '</p>');
+      document.getElementById('submit-btn').disabled = false;
+      return;
+    }
+    setResult('<p style="color:var(--text-dim);font-size:13.5px;">' + tr('conductor.queued', {id: d.task_id}) + '</p>');
+    if (poll) clearInterval(poll);
+    poll = setInterval(() => checkErrand(d.task_id), 4000);
+  } catch (e) {
+    setResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('conductor.network_error') + '</p>');
+    document.getElementById('submit-btn').disabled = false;
+  }
+}
+
+async function checkErrand(taskId) {
+  try {
+    const r = await nexusFetch('/api/conductor/' + taskId);
+    if (!r.ok) {
+      clearInterval(poll); poll = null;
+      document.getElementById('submit-btn').disabled = false;
+      setResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('conductor.error') + '</p>');
+      return;
+    }
+    const t = await r.json();
+    if (t.state === 'QUEUED' || t.state === 'RUNNING' || t.state === 'INTERRUPTED') return;
+    clearInterval(poll); poll = null;
+    document.getElementById('submit-btn').disabled = false;
+    const cp = t.checkpoint || {};
+    if (cp.decision === 'deny') {
+      setResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('conductor.denied', {reason: cp.why || ''}) + '</p>');
+    } else if (cp.decision === 'ask') {
+      setResult('<p style="color:var(--warn);font-size:13.5px;">' + tr('conductor.ask', {why: cp.why || ''}) + '</p>');
+    } else if (cp.answer) {
+      setResult('<div class="card" style="padding:14px 16px;white-space:pre-line;font-size:13.5px;">' +
+        cp.answer.replace(/</g, '&lt;') + '</div>');
+    } else {
+      setResult('<p style="color:var(--text-dim);font-size:13.5px;">' + tr('conductor.no_answer', {state: t.state, reason: t.reason || ''}) + '</p>');
+    }
+  } catch (e) { /* попробуем на следующем тике */ }
+}
+</script>
+{% endblock %}

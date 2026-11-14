@@ -1,0 +1,33 @@
+# Секреты: никогда не в git
+secrets/
+*.session
+*.session-journal
+.env
+*.token
+
+# Личные настройки и данные — своя тема, свои источники, своё фото (раздел 11 задания: не для публики)
+personal/
+
+# Данные Nexus (база знаний, отчёты, контрольные точки, логи, копии)
+data/
+logs/
+backups/
+
+# Модели Nexus (большие файлы)
+models/
+
+# Сборка .exe (PyInstaller) — собирается заново, в git не нужно
+packaging/build/
+packaging/dist/
+
+# Свой движок Ollama (скачивается packaging/fetch_ollama.ps1) — большой бинарник, не в git
+packaging/ollama/
+packaging/ollama_download/
+packaging/*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/

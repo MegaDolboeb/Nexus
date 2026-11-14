@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}{{ t('sources.title') }} — Nexus{% endblock %}
+{% block content %}
+      <header class="top">
+        <div><h1 style="margin:0;font-size:25px;">{{ t('sources.title') }}</h1>
+          <p style="margin:5px 0 0;color:var(--text-dim);font-size:13.5px;">{{ t('sources.subtitle') }}</p></div>
+      </header>
+      <table class="plain">
+        <thead><tr><th>{{ t('sources.col_source') }}</th><th>{{ t('sources.col_reliability') }}</th><th>{{ t('sources.col_status') }}</th><th>{{ t('sources.col_count') }}</th><th>{{ t('sources.col_last_ok') }}</th><th>{{ t('sources.col_actions') }}</th></tr></thead>
+        <tbody>
+        {% for s in sources %}
+        <tr>
+          <td><strong>{{ s.name }}</strong>{% if s.primary %} <span class="badge" style="border-color:rgba(111,207,142,.4);color:var(--ok);">{{ t('sources.primary') }}</span>{% endif %}
+            {% if s.note %}<div style="color:var(--text-dim);font-size:12px;margin-top:3px;">{{ s.note }}</div>{% endif %}</td>
+          <td>{{ t('reliability.' + s.reliability) }}</td>
+          <td>
+            <span class="pulse {{ 'ok' if s.ok else 'bad' }}" style="display:inline-block;margin-right:6px;"></span>
+            {{ t('sources.ok') if s.ok else t('sources.error') }}
+            {% if not s.ok %}<div style="color:var(--bad);font-size:12px;margin-top:3px;max-width:320px;">{{ s.error }}</div>{% endif %}
+          </td>
+          <td>{{ s.count }}</td>
+          <td style="color:var(--text-dim);">{{ s.last_ok or t('sources.never') }}</td>
+          <td><button type="button" class="btn ghost del-source-btn" data-id="{{ s.id }}" style="padding:5px 10px;font-size:12px;">{{ t('sources.delete') }}</button></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">{{ t('sources.empty') }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      <section class="card" style="padding:20px 24px;">
+        <h3 class="label">{{ t('sources.add_title') }}</h3>
+        <p style="margin:0 0 12px;color:var(--text-dim);font-size:12.5px;max-width:560px;">{{ t('sources.add_hint') }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <input class="text" id="new-source-name" type="text" placeholder="{{ t('sources.add_name_placeholder') }}" style="max-width:260px;">
+          <input class="text" id="new-source-url" type="text" placeholder="{{ t('sources.add_url_placeholder') }}" style="max-width:320px;">
+        </div>
+        <input class="text" id="new-source-note" type="text" placeholder="{{ t('sources.add_note_placeholder') }}" style="margin-bottom:10px;">
+        <div><button class="btn" id="source-check-btn" onclick="checkSource()">{{ t('sources.add_check') }}</button></div>
+        <div id="source-review-result" style="margin-top:14px;"></div>
+      </section>
+{% endblock %}
+{% block scripts %}
+<script>
+let reviewPoll = null;
+let lastReview = null;
+
+function setReviewResult(html) { document.getElementById('source-review-result').innerHTML = html; }
+
+async function checkSource() {
+  const name = document.getElementById('new-source-name').value.trim();
+  const url = document.getElementById('new-source-url').value.trim();
+  const note = document.getElementById('new-source-note').value.trim();
+  if (!name || !url) return;
+  document.getElementById('source-check-btn').disabled = true;
+  setReviewResult('<p style="color:var(--text-dim);font-size:13.5px;">' + tr('sources.add_checking') + '</p>');
+  try {
+    const r = await nexusFetch('/api/sources/review', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, url, note })
+    });
+    const d = await r.json();
+    if (!r.ok) { setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + (d.detail || tr('sources.add_error')) + '</p>'); document.getElementById('source-check-btn').disabled = false; return; }
+    if (reviewPoll) clearInterval(reviewPoll);
+    reviewPoll = setInterval(() => pollReview(d.task_id, name, url, note), 3000);
+  } catch (e) {
+    setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('sources.add_network_error') + '</p>');
+    document.getElementById('source-check-btn').disabled = false;
+  }
+}
+
+async function pollReview(taskId, name, url, note) {
+  try {
+    const r = await nexusFetch('/api/sources/review/' + taskId);
+    if (!r.ok) {
+      clearInterval(reviewPoll); reviewPoll = null;
+      document.getElementById('source-check-btn').disabled = false;
+      setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('sources.add_error') + '</p>');
+      return;
+    }
+    const t = await r.json();
+    if (t.state === 'QUEUED' || t.state === 'RUNNING' || t.state === 'INTERRUPTED') return;
+    clearInterval(reviewPoll); reviewPoll = null;
+    document.getElementById('source-check-btn').disabled = false;
+    const cp = t.checkpoint || {};
+    lastReview = { name, url, note };
+    const verdictLabel = tr('sources.verdict.' + (cp.verdict || 'unclear'));
+    const titlesHtml = (cp.titles && cp.titles.length)
+      ? '<p style="margin:8px 0 0;color:var(--text-dim);font-size:12.5px;">' + tr('sources.sample_titles') + ': ' + escHtml(cp.titles.join(' · ')) + '</p>' : '';
+    const fetchErrHtml = cp.fetch_error
+      ? '<p style="margin:8px 0 0;color:var(--bad);font-size:12.5px;">' + tr('sources.fetch_failed') + ': ' + escHtml(cp.fetch_error) + '</p>' : '';
+    const suggestedId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'source';
+    setReviewResult(
+      '<div class="card" style="padding:14px 16px;">' +
+      '<strong>' + verdictLabel + '</strong>' +
+      '<p style="margin:6px 0 0;font-size:13.5px;color:var(--text-dim);">' + escHtml(cp.why || '') + '</p>' +
+      titlesHtml + fetchErrHtml +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">' +
+      '<input class="text" id="new-source-id" type="text" value="' + escHtml(suggestedId) + '" placeholder="' + tr('sources.add_id_placeholder') + '" style="max-width:220px;">' +
+      '<button class="btn" onclick="addSource()">' + tr('sources.add_confirm') + '</button>' +
+      '</div></div>');
+  } catch (e) { /* попробуем на следующем тике */ }
+}
+
+document.querySelectorAll('.del-source-btn').forEach(btn => {
+  btn.addEventListener('click', () => twoStepConfirm(btn, tr('sources.delete_confirm'), () => deleteSource(btn.dataset.id)));
+});
+async function deleteSource(id) {
+  try {
+    const r = await nexusFetch('/api/sources/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    if (r.ok) { location.reload(); return; }
+    const d = await r.json();
+    setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + escHtml(d.detail || tr('sources.delete_error')) + '</p>');
+  } catch (e) { setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('sources.add_network_error') + '</p>'); }
+}
+
+async function addSource() {
+  if (!lastReview) return;
+  const id = document.getElementById('new-source-id').value.trim();
+  try {
+    const r = await nexusFetch('/api/sources/add', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name: lastReview.name, url: lastReview.url, note: lastReview.note })
+    });
+    const d = await r.json();
+    if (!r.ok) { setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + (d.detail || tr('sources.add_error')) + '</p>'); return; }
+    location.reload();
+  } catch (e) { setReviewResult('<p style="color:var(--bad);font-size:13.5px;">' + tr('sources.add_network_error') + '</p>'); }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}{{ t('research.title') }} — Nexus{% endblock %}
+{% block content %}
+      <header class="top">
+        <div><h1 style="margin:0;font-size:25px;">{{ t('research.title') }}</h1>
+          <p style="margin:5px 0 0;color:var(--text-dim);font-size:13.5px;">{{ t('research.subtitle') }}</p></div>
+      </header>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <a class="chip{{ ' active' if not selected_topic else '' }}" href="/research?token={{ token }}{% if selected_date %}&date={{ selected_date }}{% endif %}">{{ t('research.all') }}</a>
+        {% for tp in topics %}
+        <a class="chip{{ ' active' if selected_topic == tp.id else '' }}" href="/research?token={{ token }}&topic={{ tp.id }}{% if selected_date %}&date={{ selected_date }}{% endif %}">{{ tp.name }}</a>
+        {% endfor %}
+      </div>
+
+      <form method="get" action="/research" style="display:flex;gap:8px;align-items:center;">
+        <input type="hidden" name="token" value="{{ token }}">
+        {% if selected_topic %}<input type="hidden" name="topic" value="{{ selected_topic }}">{% endif %}
+        <input class="text" type="date" name="date" value="{{ selected_date }}" style="max-width:190px;">
+        <button class="btn ghost" type="submit">{{ t('research.go_to_date') }}</button>
+        {% if selected_date %}<a class="btn ghost" href="/research?token={{ token }}{% if selected_topic %}&topic={{ selected_topic }}{% endif %}">{{ t('research.clear_date') }}</a>{% endif %}
+      </form>
+
+      {% for g in groups %}
+      <details class="card" style="padding:4px 0;" {{ 'open' if loop.first or selected_date else '' }}>
+        <summary style="cursor:pointer;padding:14px 20px;font-size:14px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          <span>{{ g.label }}</span>
+          <span style="display:flex;align-items:center;gap:12px;">
+            <span style="color:var(--text-dim);font-weight:500;font-size:12.5px;">{{ g.materials | length }} {{ t('home.materials_count') }}</span>
+            <button type="button" class="btn ghost" style="padding:5px 12px;font-size:12px;"
+              onclick="event.preventDefault();makeOverview(this, {{ g.materials | map(attribute='id') | list | tojson }})">{{ t('research.overview_btn') }}</button>
+          </span>
+        </summary>
+        <div class="day-overview" style="display:none;padding:0 20px;"></div>
+        <div style="display:flex;flex-direction:column;gap:12px;padding:4px 20px 18px;">
+        {% for r in g.materials %}
+        <article class="card" style="padding:18px 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+            <h2 style="margin:0;font-size:16px;font-weight:600;max-width:680px;">
+              <a href="/material/{{ r.id }}?token={{ token }}" style="color:inherit;">{{ r.title }}</a>
+            </h2>
+            <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap;">
+              <span class="pulse {{ r.status_color }}"></span>
+              <span style="font-size:12.5px;color:var(--text-dim);">{{ r.status }}</span>
+              {% if r.low_reliability %}<span class="badge">{{ t('badge.low_reliability') }}</span>{% endif %}
+            </div>
+          </div>
+          {% if r.reason %}<p style="margin:8px 0 0;color:var(--text-dim);font-size:13px;font-style:italic;">{{ r.reason }}</p>{% endif %}
+          <p style="margin:8px 0 0;color:var(--text-dim);font-size:13.5px;line-height:1.5;max-width:800px;white-space:pre-line;">{{ r.text[:280] }}{% if r.text|length > 280 %}…{% endif %}</p>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+            <span style="font-size:12px;color:var(--text-dim);">{{ r.topic }} · {{ r.source }} · {{ r.when }}</span>
+            <span style="display:flex;gap:14px;">
+              <a href="/material/{{ r.id }}?token={{ token }}" style="font-size:12.5px;color:var(--accent);">{{ t('research.details') }}</a>
+              <a href="{{ r.url }}" target="_blank" rel="noopener" style="font-size:12.5px;color:var(--text-dim);">{{ t('research.source_link') }}</a>
+            </span>
+          </div>
+        </article>
+        {% endfor %}
+        </div>
+      </details>
+      {% else %}
+      <div class="empty">{{ t('research.empty') }}</div>
+      {% endfor %}
+{% endblock %}
+{% block scripts %}
+<script>
+async function makeOverview(btn, itemIds) {
+  const box = btn.closest('summary').nextElementSibling;
+  box.style.display = 'block';
+  box.innerHTML = '<p style="margin:10px 0;color:var(--text-dim);font-size:13px;">' + tr('research.overview_loading') + '</p>';
+  btn.disabled = true;
+  try {
+    const r = await nexusFetch('/api/research/overview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_ids: itemIds })
+    });
+    const d = await r.json();
+    if (!r.ok) { box.innerHTML = '<p style="color:var(--bad);font-size:13px;">' + (d.detail || tr('research.overview_error')) + '</p>'; btn.disabled = false; return; }
+    pollOverview(d.task_id, box, btn);
+  } catch (e) {
+    box.innerHTML = '<p style="color:var(--bad);font-size:13px;">' + tr('research.overview_network_error') + '</p>';
+    btn.disabled = false;
+  }
+}
+async function pollOverview(taskId, box, btn) {
+  try {
+    const r = await nexusFetch('/api/research/overview/' + taskId);
+    if (!r.ok) {
+      btn.disabled = false;
+      box.innerHTML = '<p style="color:var(--bad);font-size:13px;margin:10px 0;">' + tr('research.overview_error') + '</p>';
+      return;
+    }
+    const t = await r.json();
+    if (t.state === 'QUEUED' || t.state === 'RUNNING' || t.state === 'INTERRUPTED') { setTimeout(() => pollOverview(taskId, box, btn), 3000); return; }
+    btn.disabled = false;
+    const cp = t.checkpoint || {};
+    box.innerHTML = '<div class="card" style="padding:14px 16px;margin:8px 0 14px;white-space:pre-line;font-size:13.5px;">' +
+      (cp.text || '').replace(/</g, '&lt;') + '</div>';
+  } catch (e) { setTimeout(() => pollOverview(taskId, box, btn), 3000); }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,8 @@
+{
+  "_о_файле": "Пример личных настроек. Скопируйте в personal/settings.json и меняйте как хотите, либо просто сохраните из панели (Настройки).",
+  "segment_min": 25,
+  "rest_min": 5,
+  "after_priority_min": 3,
+  "research_mode": "balanced",
+  "custom_instruction": ""
+}

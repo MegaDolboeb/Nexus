@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ m.title }} — Nexus{% endblock %}
+{% block content %}
+      <a href="/research?token={{ token }}" style="font-size:13px;color:var(--text-dim);">{{ t('material.back') }}</a>
+      <header class="top">
+        <div>
+          <h1 style="margin:0;font-size:22px;max-width:760px;">{{ m.title }}</h1>
+          <p style="margin:8px 0 0;color:var(--text-dim);font-size:13px;">{{ m.topic }} · {{ m.source }} · {{ m.when }}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;white-space:nowrap;">
+          <span class="pulse {{ m.status_color }}"></span>
+          <span style="font-size:13px;color:var(--text-dim);">{{ m.status }}</span>
+        </div>
+      </header>
+
+      {% if m.low_reliability %}<div><span class="badge">{{ t('badge.low_reliability') }}</span></div>{% endif %}
+      {% if m.reason %}<p style="margin:0;color:var(--text-dim);font-size:13.5px;font-style:italic;">{{ m.reason }}</p>{% endif %}
+
+      <article class="card" style="padding:22px 26px;">
+        <div style="white-space:pre-line;font-size:14.5px;line-height:1.6;max-width:760px;">{{ m.text }}</div>
+      </article>
+
+      <div style="display:flex;gap:16px;align-items:center;">
+        <a href="{{ m.url }}" target="_blank" rel="noopener" class="btn ghost">{{ t('material.open_source') }}</a>
+        {% if m.memory_id %}<a href="/memory/{{ m.memory_id }}?token={{ token }}" class="btn ghost">{{ t('material.to_memory') }}</a>{% endif %}
+      </div>
+{% endblock %}

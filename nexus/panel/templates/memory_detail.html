@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ m.title }} — Nexus{% endblock %}
+{% block content %}
+      <a href="/memory?token={{ token }}" style="font-size:13px;color:var(--text-dim);">{{ t('memory.back') }}</a>
+      <header class="top">
+        <div>
+          <h1 style="margin:0;font-size:22px;max-width:760px;">{{ m.title }}</h1>
+          <p style="margin:8px 0 0;color:var(--text-dim);font-size:13px;">{{ m.topic }} · {{ m.links | length }} {{ t('memory.sources_count') }} · {{ t('memory.updated', time=m.updated) }}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto;white-space:nowrap;">
+          <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12.5px;" onclick="downloadMemory()">{{ t('memory_detail.download') }}</button>
+          <span class="pulse {{ m.status_color }}"></span>
+          <span style="font-size:13px;color:var(--text-dim);">{{ m.status }}</span>
+        </div>
+      </header>
+      {% if m.low_reliability %}<div><span class="badge">{{ t('badge.low_reliability') }}</span></div>{% endif %}
+
+      <section>
+        <h3 class="label">{{ t('memory.conclusions') }}</h3>
+        <article class="card" style="padding:18px 22px;white-space:pre-line;font-size:14px;line-height:1.6;">{{ m.conclusions }}</article>
+      </section>
+
+      <section>
+        <h3 class="label">{{ t('memory.full_report') }}</h3>
+        <article class="card" style="padding:18px 22px;white-space:pre-line;font-size:13.5px;line-height:1.6;color:var(--text-dim);">{{ m.report }}</article>
+      </section>
+
+      {% if m.related %}
+      <section>
+        <h3 class="label">{{ t('memory.related') }}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          {% for rid in m.related %}<a class="chip" href="/memory/{{ rid }}?token={{ token }}">#{{ rid }}</a>{% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      {% if m.history %}
+      <section>
+        <h3 class="label">{{ t('memory.history') }}</h3>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          {% for h in m.history %}
+          <div style="font-size:12.5px;color:var(--text-dim);">{{ h.at }} — {{ h.reason }}</div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+function downloadMemory() {
+  const title = {{ m.title | tojson }};
+  const topic = {{ m.topic | tojson }};
+  const status = {{ m.status | tojson }};
+  const updated = {{ m.updated | tojson }};
+  const conclusions = {{ m.conclusions | tojson }};
+  const report = {{ m.report | tojson }};
+  const history = {{ m.history | tojson }};
+  let text = title + "\n" + "=".repeat(title.length) + "\n\n"
+    + topic + " · " + status + " · " + updated + "\n\n"
+    + tr('memory.conclusions') + ":\n" + conclusions + "\n\n"
+    + tr('memory.full_report') + ":\n" + report + "\n";
+  if (history && history.length) {
+    text += "\n" + tr('memory.history') + ":\n";
+    history.forEach(h => { text += "- " + h.at + " — " + h.reason + "\n"; });
+  }
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const slug = title.toLowerCase().replace(/[^a-z0-9а-яё]+/gi, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'memory';
+  a.href = url; a.download = slug + '.txt';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}
