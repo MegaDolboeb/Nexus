@@ -1,39 +1,35 @@
 # Nexus
 
-Полностью локальный персональный исследовательский помощник. Сам следит за выбранными
-источниками (RSS, arXiv), отбирает интересное по вашим темам, делает выжимки локальной
-нейросетью, хранит растущую «память» по темам и честно помечает, насколько материал
-подтверждён независимыми источниками.
+A fully local and FREE personal research assistant. It monitors selected sources (RSS, arXiv), selects interesting content related to your topics, generates summaries using a local neural network, stores a growing “memory” of topics, and honestly indicates how well the material is supported by independent sources.
 
-Никакого облака: источники читаются из интернета, но думает и анализирует только модель,
-запущенная у вас на компьютере через собственный экземпляр Ollama. Данные никуда не уходят.
+No cloud: sources are read from the internet, but only the model running on your computer via your own Ollama instance processes and analyzes the data. The data never leaves your device.
 
-## Что умеет
+## What it can do
 
-- **Источники.** RSS/Atom и arXiv из коробки; можно добавить свой — по названию и ссылке,
-  модель коротко оценит, похож ли он на надёжный (решение всегда за вами).
-- **Темы.** Свои темы с ключевыми словами (дешёвый отбор без модели, до того как звать её).
-- **Достоверность по правилам, не по мнению модели.** Подтверждено / Частично / Не проверено /
-  Оспаривается — считает код, модель только помогает сравнивать.
-- **Память.** Похожие темы объединяются по смыслу (эмбеддинги), с историей изменений; тему
-  можно скачать как текстовый файл.
-- **Дирижёр.** Поручения обычными словами, с проверкой на подготовку вреда и уведомлением
-  Windows, когда готово.
-- **Приоритетная программа.** Если на компьютере есть программа, которой видеокарта важнее
-  (например, голосовой ассистент или стриминг) — укажите её в Настройках (имя, процессы,
-  порты, необязательный файл состояния), и Nexus будет уступать ей автоматически, работая
-  отрезками с паузами между ними. Оставьте поле пустым, если такой программы нет — Nexus
-  просто будет работать свободно.
-- **Панель.** Своё окно (не браузер), иконка в трее, язык интерфейса (русский/английский),
-  выбор и загрузка моделей прямо из Настроек, журнал всех действий для прозрачности.
+- **Sources.** RSS/Atom and arXiv out of the box; you can add your own — by name and link;
+ the model will briefly assess whether it looks reliable (the decision is always yours).
+- **Topics.** Your own topics with keywords (cheap selection without the model, before calling it).
+- **Reliability according to the rules, not according to the model’s opinion.** Confirmed / Partially confirmed / Not verified /
+  Contested — the code is considered, the model only helps with comparison.
+- **Memory.** Similar topics are grouped by meaning (embeddings), with a history of changes; the topic
+ can be downloaded as a text file.
+- **Conductor.** Instructions are given in ordinary words, with a check for potential harm and a notification to
+ Windows when it’s ready.
+- **Priority program.**** If there is a program on your computer that is more important than the graphics
+card (for example, voice assistant or streaming), specify it in the Settings (name, processes,
+  ports, optional status file), and the Nexus will yield to it automatically, working
+  segments with pauses in between. Leave the field empty if there is no such program — Nexus
+  it will just work freely.
+- **The panel.** Own window (not browser), tray icon, interface language (Russian/English),
+selection and loading of models directly from the Settings, a log of all actions for transparency.
 
-## Требования
+## Requirements
 
 - Windows, Python 3.11+.
-- [Ollama](https://ollama.com) — отдельно, своим собственным экземпляром Nexus не распоряжается
-  никто другой.
+- [Ollama](https://ollama.com ) — separately, it does not manage its own instance of the Nexus
+  No one else.
 
-## Установка и запуск
+## Installation and launch
 
 ```bash
 python -m venv .venv
@@ -41,35 +37,20 @@ python -m venv .venv
 .venv\Scripts\python -m nexus panel
 ```
 
-Либо после установки — дважды кликнуть `Nexus.bat` (без окна консоли).
+Or, after installation, double‑click `Nexus.bat` (without a console window).
 
-При первом запуске Nexus создаст рядом с собой `personal/`, `data/`, `logs/` и возьмёт примеры
-настроек/тем/источников из `config/*.example.json`. Правьте что угодно прямо из панели —
-Настройки, Интересы, Источники.
+On the first launch, Nexus will create `personal/`, `data/`, `logs/` next to itself and take examples of settings/themes/sources from `config/*.example.json`. Edit anything directly from the panel —
+Settings, Interests, Sources.
 
-## Сборка в .exe
+## Building to .exe
 
 ```bash
 packaging\build.bat
 ```
 
-Результат — папка `packaging\dist\Nexus\` (не один файл: Nexus хранит данные рядом с собой,
-переносить и раздавать нужно всю папку). Подробности и ограничения — в `packaging/README.md`.
+The result is the `packaging\dist\Nexus\` folder (not a single file: Nexus stores data alongside itself; you need to move and distribute the entire folder). Details and limitations are in `packaging/README.md`.
 
-## Известные ограничения (честно)
 
-- Качество и скорость целиком зависят от вашего железа — слабая видеокарта/мало памяти
-  означают медленнее и проще, облачного запасного варианта нет и не будет (это весь смысл
-  проекта).
-- Только десктоп, без мобильного приложения и синхронизации между устройствами.
-- Пока только RSS/arXiv — Telegram и другие источники планируются позже.
-- Проверка достоверности — простые правила (счёт независимых источников), не глубокий
-  фактчекинг.
-- Один пользователь, один компьютер — ни команд, ни общего доступа.
 
-## Код
-
-Из прозрачности: `nexus/integrity.py` — необязательный «замок с сигнализацией» на несколько
-файлов, от которых зависит уважение к приоритетной программе. Это не защита от владельца
-компьютера (это и невозможно), а предупреждение, если код подменили без вашего ведома.
-После осознанного изменения этих файлов — `python -m nexus lock-integrity`.
+ - Quality and speed depend entirely on your hardware — a weak graphics card/low memory.
+  This means slower and simpler; there is no cloud backup option and there never will be (that’s the whole point of the project).
